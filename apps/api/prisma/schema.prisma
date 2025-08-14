@@ -1,0 +1,157 @@
+// Prisma schema for KNwN Calendar
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TaskType { static carousel video }
+enum VideoSubtype { shoot_based render_based basic_animated }
+enum CarouselSubtype { static animated }
+
+enum StaticStatus {
+  ideation copy_pending copy_ready design_pending design_ready approval_pending
+  feedback_received approved
+}
+
+enum AnimatedCarouselStatus {
+  ideation copy_pending copy_ready design_pending design_ready
+  animation_pending animated approval_pending feedback_received approved
+}
+
+enum VideoBasicStatus {
+  ideation copy_pending copy_ready design_pending design_ready
+  animation_pending animated approval_pending feedback_received approved
+}
+
+enum VideoRenderStatus {
+  ideation copy_pending copy_ready render_pending render_ready
+  animation_pending animated approval_pending feedback_received approved
+}
+
+enum VideoShootStatus {
+  ideation copy_script_pending copy_script_ready
+  preprod_checklist shoot_scheduled shoot_done
+  lineup_pending lineup_done
+  editing_pending video_ready approval_pending feedback_received approved
+}
+
+model TeamMember {
+  id          String           @id @default(cuid())
+  name        String
+  email       String?          @unique
+  active      Boolean          @default(true)
+  roles       TeamMemberRole[]
+  assignments TaskAssignment[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model Role {
+  id    String @id @default(cuid())
+  name  String @unique
+  users TeamMemberRole[]
+}
+
+model TeamMemberRole {
+  id           String @id @default(cuid())
+  teamMemberId String
+  roleId       String
+  teamMember   TeamMember @relation(fields: [teamMemberId], references: [id])
+  role         Role       @relation(fields: [roleId], references: [id])
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  projects  Project[]
+  createdAt DateTime @default(now())
+}
+
+model Project {
+  id        String  @id @default(cuid())
+  clientId  String
+  client    Client @relation(fields: [clientId], references: [id])
+  name      String
+  notes     String?
+  tasks     Task[]
+  createdAt DateTime @default(now())
+}
+
+model SizePreset {
+  id       String @id @default(cuid())
+  label    String
+  width    Int?
+  height   Int?
+  platform String?
+}
+
+model Task {
+  id           String @id @default(cuid())
+  projectId    String
+  project      Project @relation(fields: [projectId], references: [id])
+
+  title        String
+  description  String?
+  taskType     TaskType
+  videoSubtype     VideoSubtype?
+  carouselSubtype  CarouselSubtype?
+
+  sizePresetId String?
+  sizePreset   SizePreset? @relation(fields: [sizePresetId], references: [id])
+
+  goLiveDate   DateTime
+  startDate    DateTime?
+  clientDate   DateTime?
+
+  referenceText String?
+  referenceUrls Json?
+
+  staticStatus            StaticStatus?
+  animatedCarouselStatus  AnimatedCarouselStatus?
+  videoBasicStatus        VideoBasicStatus?
+  videoRenderStatus       VideoRenderStatus?
+  videoShootStatus        VideoShootStatus?
+
+  clientDependency    Boolean @default(false)
+  clientDependencyNote String?
+
+  clientFeedbackGeneral String?
+
+  stepData Json?
+  feedback Json?
+
+  approvedAt DateTime?
+  approvedById String?
+
+  assignments TaskAssignment[]
+  files       TaskFile[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model TaskAssignment {
+  id           String @id @default(cuid())
+  taskId       String
+  teamMemberId String
+  roleId       String?
+  task         Task       @relation(fields: [taskId], references: [id])
+  member       TeamMember @relation(fields: [teamMemberId], references: [id])
+  role         Role?      @relation(fields: [roleId], references: [id])
+}
+
+model TaskFile {
+  id         String @id @default(cuid())
+  taskId     String
+  fileName   String
+  mimeType   String
+  size       Int
+  storageKey String
+  uploadedBy String?
+  createdAt  DateTime @default(now())
+  task       Task @relation(fields: [taskId], references: [id])
+}
